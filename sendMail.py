@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
+from helper import *
 
 def sendEmailFromGmail(email_from, email_password, email_to, listaPartidas):
     server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -17,6 +17,12 @@ def sendEmailFromGmail(email_from, email_password, email_to, listaPartidas):
 
     for partida in listaPartidas:
         content += "<p><strong> %s</strong></p><br>" % partida
+
+        exibicoes_vt = encontrar_exibicoes_vt(partida)
+        if exibicoes_vt:
+            content += "<p><em></em></p><br>" % exibicoes_vt
+        else:
+            content += '<p>Sem vt, bitches!</p><br>'
 
     text = "Hi!\nHow are you?\nHere is the link you wanted:\nhttps://www.python.org"
     html = """\

@@ -1,21 +1,20 @@
-from bs4 import BeautifulSoup
-from selenium import webdriver
 import unicodedata, pytz
 from datetime import datetime
 from sendMail import *
 from partida import *
-
-def get_page_html_soup(url):
-    driver = webdriver.PhantomJS()
-
-    driver.get(url)
-
-    html = driver.page_source
-
-    return BeautifulSoup(html, 'html.parser')
+from helper import *
 
 def normalize_team_name(team_name):
     return unicodedata.normalize("NFKD", team_name[0].getText()).strip()
+
+def get_team_name(css_selector):
+    team = p.select(css_selector + '.team-name .resumed-name')
+    if team:
+        return normalize_team_name(team)
+
+def team_has_score(css_selector):
+    team_score = p.select(css_selector + '.team-points')
+    return team_score and team_score[0].getText().strip()
 
 def sendMail(listaPartidas):
     today = datetime.now(tz=pytz.timezone('America/Belem'))
@@ -37,6 +36,7 @@ print('>> Iniciando coleta de dados...')
 
 website = get_page_html_soup('http://ligafutsal.com.br/classificacao/')
 
+# Coleta de partidas da coluna direita e esquerda
 partidas = website.select('.match_item_right') + website.select('.match_item_left')
 
 dadosPartidas = []
@@ -46,40 +46,27 @@ for p in partidas:
 
     data = p.select('.match-date')
     if data:
-        data_partida, numero_partida = data[0].getText().split('\n')
-        data_partida, time_partida = map(lambda x: x.strip(), data_partida.split('|'))
+        data_horario_partida, numero_partida = data[0].getText().split('\n')
+        data_partida, horario_partida = map(lambda x: x.strip(), data_horario_partida.split('|'))
 
         partida.number = int(numero_partida.replace('| Nr. ', ''))
+        partida.dateTime = datetime.strptime(data_partida + ' ' + horario_partida, '%d/%m/%Y %H:%M')
 
-        partida.dateTime = datetime.strptime(data_partida + ' ' + time_partida, '%d/%m/%Y %H:%M')
-
-    home_team = p.select('.home.team-name .resumed-name')
-    if home_team:
-        partida.home_team = normalize_team_name(home_team)
-    else:
+    partida.home_team = get_team_name('.home')
+    partida.away_team = get_team_name('.away')
+    # Caso a partida não possua os 2 times definidos, será ignorada
+    if not (partida.home_team and partida.away_team):
         continue
-
-    away_team = p.select('.away.team-name .resumed-name')
-    if away_team:
-        partida.away_team = normalize_team_name(away_team)
-    else:
-        continue
-
-    sportv_transmission = p.select('.match-place img[alt=SporTV]')
-    partida.tv_transmission = True if sportv_transmission else False
 
     # Caso a partida possua placar, não nos interessa mais.
-    home_team_score = p.select('.home.team-points')
-    if home_team_score:
-        if home_team_score[0].getText().strip():
-            continue
+    if team_has_score('.home') or team_has_score('.away'):
+        continue
 
-    away_team_score = p.select('.away.team-points')
-    if away_team_score:
-        if away_team_score[0].getText().strip():
-            continue
+    partida.tv_transmission = True if p.select('.match-place img[alt=SporTV]') else False
 
     if partida:
         dadosPartidas.append(partida)
 
-sendMail(dadosPartidas)
+encontrar_exibicoes_vt(dadosPartidas[0])
+
+# sendMail(dadosPartidas)
