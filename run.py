@@ -1,59 +1,72 @@
-# Import the email modules we'll need
-from email.mime.text import MIMEText
-import smtplib
 from bs4 import BeautifulSoup
 from selenium import webdriver
-import unicodedata
+import unicodedata, pytz
+from datetime import datetime
+from sendMail import *
+from partida import *
 
+def get_page_html_soup(url):
+    driver = webdriver.PhantomJS()
 
-def sendEmailFromGmail(email_from, email_password, email_to, content, subject):
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(email_from, email_password)
+    driver.get(url)
 
-    email = MIMEText(content)
-    email['Subject'] = subject
-    email['From'] = email_from
-    email['To'] = email_to
+    html = driver.page_source
 
-    server.send_message(email)
-    server.quit()
-
+    return BeautifulSoup(html, 'html.parser')
 
 def normalize_team_name(team_name):
     return unicodedata.normalize("NFKD", team_name[0].getText()).strip()
 
-driver = webdriver.PhantomJS()
+def sendMail(listaPartidas):
+    today = datetime.now(tz=pytz.timezone('America/Belem'))
 
-driver.get('http://ligafutsal.com.br/classificacao/')
+    partidasDeHoje = []
 
-html = driver.page_source
+    for partida in listaPartidas:
+        if partida.dateTime.day == today.day and partida.dateTime.month == today.month and partida.dateTime.year == today.year and \
+                partida.tv_transmission:
+            partidasDeHoje.append(partida)
+            print('Partida %s ocorre hoje!' % partida)
 
-soup = BeautifulSoup(html, 'html.parser')
+    if partidasDeHoje:
+        print('>> Enviando e-mail...')
+        sendEmailFromGmail('alessandro.sysdata@gmail.com', 'ZOVHHMWIL', 'ale-remo@hotmail.com', partidasDeHoje)
+        print('>> E-mail enviado!')
 
-partidas = soup.select('.match_item_right') + soup.select('.match_item_left')
+print('>> Iniciando coleta de dados...')
+
+website = get_page_html_soup('http://ligafutsal.com.br/classificacao/')
+
+partidas = website.select('.match_item_right') + website.select('.match_item_left')
 
 dadosPartidas = []
 
 for p in partidas:
-    partida = {}
+    partida = Partida()
 
     data = p.select('.match-date')
     if data:
         data_partida, numero_partida = data[0].getText().split('\n')
-        partida['data'], partida['time'] = map(lambda x: x.strip(), data_partida.split('|'))
-        partida['number'] = numero_partida.replace('| Nr. ', '')
+        data_partida, time_partida = map(lambda x: x.strip(), data_partida.split('|'))
+
+        partida.number = int(numero_partida.replace('| Nr. ', ''))
+
+        partida.dateTime = datetime.strptime(data_partida + ' ' + time_partida, '%d/%m/%Y %H:%M')
 
     home_team = p.select('.home.team-name .resumed-name')
     if home_team:
-        partida['home_team'] = normalize_team_name(home_team)
+        partida.home_team = normalize_team_name(home_team)
+    else:
+        continue
 
     away_team = p.select('.away.team-name .resumed-name')
     if away_team:
-        partida['away_team'] = normalize_team_name(away_team)
+        partida.away_team = normalize_team_name(away_team)
+    else:
+        continue
 
     sportv_transmission = p.select('.match-place img[alt=SporTV]')
-    partida['sportTV_transmission'] = True if sportv_transmission else False
+    partida.tv_transmission = True if sportv_transmission else False
 
     # Caso a partida possua placar, não nos interessa mais.
     home_team_score = p.select('.home.team-points')
@@ -69,8 +82,4 @@ for p in partidas:
     if partida:
         dadosPartidas.append(partida)
 
-for partida in dadosPartidas:
-    print(partida)
-
-
-# sendEmailFromGmail("alessandro.sysdata@gmail.com", 'ZOVHHMWIL',"ale-remo@hotmail.com", 'HA-HA!')
+sendMail(dadosPartidas)
