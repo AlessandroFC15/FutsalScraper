@@ -3,6 +3,7 @@ from selenium import webdriver
 from partida import *
 from datetime import datetime
 
+
 def get_page_html_soup(url):
     driver = webdriver.PhantomJS()
 
@@ -11,6 +12,7 @@ def get_page_html_soup(url):
     html = driver.page_source
 
     return BeautifulSoup(html, 'html.parser')
+
 
 def encontrar_horarios(url):
     print('>> Visitando %s' % url)
@@ -31,7 +33,8 @@ def encontrar_horarios(url):
 
         exibicoes.append(exibicao)
 
-    print(exibicoes)
+    return exibicoes
+
 
 def encontrar_exibicoes_vt(partida):
     lista_id_canais_sportv = [443, 444, 2691]
@@ -63,13 +66,9 @@ def encontrar_exibicoes_vt(partida):
 
                 if 'liga futsal' in descricao.lower() and partida.dateTime.hour == hora and partida.dateTime.minute == minuto:
                     print(partida)
-                    horarios_exibicoes = encontrar_horarios(url_detalhes + link)
-                    print(horarios_exibicoes)
-                    print('#####')
-
-
+                    return encontrar_horarios(url_detalhes + link)
 
         print('-------------')
 
-encontrar_exibicoes_vt(Partida(number=1, date=datetime.strptime("21/10/2016 19:15", '%d/%m/%Y %H:%M'), home_team='Magnus',
-                               away_team='Intelli', tv_transmission=True))
+        # encontrar_exibicoes_vt(Partida(number=1, date=datetime.strptime("22/10/2016 11:00", '%d/%m/%Y %H:%M'), home_team='Magnus',
+        #                                away_team='Intelli', tv_transmission=True))

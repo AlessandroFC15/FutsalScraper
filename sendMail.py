@@ -16,13 +16,16 @@ def sendEmailFromGmail(email_from, email_password, email_to, listaPartidas):
     content = ''
 
     for partida in listaPartidas:
-        content += "<p><strong> %s</strong></p><br>" % partida
+        content += "<p><strong> %s</strong></p>" % partida
 
         exibicoes_vt = encontrar_exibicoes_vt(partida)
-        if exibicoes_vt:
-            content += "<p><em></em></p><br>" % exibicoes_vt
+        if len(exibicoes_vt) > 1:
+            for exibicao in exibicoes_vt:
+                content += "<p><em>Canal %s | %s</em></p>" % (exibicao['canal'], exibicao['horario'])
         else:
-            content += '<p>Sem vt, bitches!</p><br>'
+            content += '<p><em>Sem vt, bitches!</em></p>'
+
+        content += '<br>'
 
     text = "Hi!\nHow are you?\nHere is the link you wanted:\nhttps://www.python.org"
     html = """\
@@ -30,9 +33,7 @@ def sendEmailFromGmail(email_from, email_password, email_to, listaPartidas):
       <head></head>
       <body>
         <p>Olá,</p>
-        <br>
         <p>Segue abaixo os jogos de futsal de hoje: </p>
-        <br>
         %s
       </body>
     </html>

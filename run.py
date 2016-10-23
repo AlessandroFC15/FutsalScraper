@@ -1,20 +1,22 @@
 import unicodedata, pytz
-from datetime import datetime
 from sendMail import *
-from partida import *
 from helper import *
+
 
 def normalize_team_name(team_name):
     return unicodedata.normalize("NFKD", team_name[0].getText()).strip()
+
 
 def get_team_name(css_selector):
     team = p.select(css_selector + '.team-name .resumed-name')
     if team:
         return normalize_team_name(team)
 
+
 def team_has_score(css_selector):
     team_score = p.select(css_selector + '.team-points')
     return team_score and team_score[0].getText().strip()
+
 
 def sendMail(listaPartidas):
     today = datetime.now(tz=pytz.timezone('America/Belem'))
@@ -31,6 +33,7 @@ def sendMail(listaPartidas):
         print('>> Enviando e-mail...')
         sendEmailFromGmail('alessandro.sysdata@gmail.com', 'ZOVHHMWIL', 'ale-remo@hotmail.com', partidasDeHoje)
         print('>> E-mail enviado!')
+
 
 print('>> Iniciando coleta de dados...')
 
@@ -67,6 +70,6 @@ for p in partidas:
     if partida:
         dadosPartidas.append(partida)
 
-encontrar_exibicoes_vt(dadosPartidas[0])
+# encontrar_exibicoes_vt(dadosPartidas[0])
 
-# sendMail(dadosPartidas)
+sendMail(dadosPartidas)
